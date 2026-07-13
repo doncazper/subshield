@@ -1,0 +1,117 @@
+import { ArrowRight, Check, Cpu, LockKeyhole, ShieldCheck, Trash2, UserRound } from "lucide-react";
+import { useEffect, useState } from "react";
+import { loadHealth, loadSession } from "../lib/api";
+import type { AppHealth, SessionState } from "../types";
+import { Header } from "./Header";
+import { ScanPanel } from "./ScanPanel";
+
+export function HomePage() {
+  const [health, setHealth] = useState<AppHealth | null>(null);
+  const [session, setSession] = useState<SessionState>({ status: "loading" });
+
+  const refreshSession = async () => {
+    try {
+      setSession(await loadSession());
+    } catch {
+      setSession({ status: "anonymous", configured: health?.configured ?? false });
+    }
+  };
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const load = async () => {
+      try {
+        const [nextHealth, nextSession] = await Promise.all([
+          loadHealth(controller.signal),
+          loadSession(controller.signal),
+        ]);
+        setHealth(nextHealth);
+        setSession(nextSession);
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setSession({ status: "anonymous", configured: false });
+      }
+    };
+    void load();
+    return () => controller.abort();
+  }, []);
+
+  const approvalPending = health?.configured === false;
+
+  return (
+    <div className="app-shell">
+      <Header session={session} onLoggedOut={() => void refreshSession()} />
+      <main>
+        <section className="hero">
+          <div className="hero-copy">
+            <h1>Keep the review queue focused.</h1>
+            <p>
+              SubShield surfaces likely spam and high-risk language from one community at a time. Decisions stay with moderators.
+            </p>
+            {session.status === "authenticated" ? (
+              <a className="button button--primary hero-cta" href="#scan">
+                Open your community scan
+                <ArrowRight size={19} strokeWidth={1.9} aria-hidden="true" />
+              </a>
+            ) : (
+              <a className="button button--primary hero-cta" href="/api/auth/reddit">
+                <UserRound size={20} strokeWidth={1.8} aria-hidden="true" />
+                Connect Reddit account
+              </a>
+            )}
+            <a className="access-link" href="/privacy#data-access">
+              See exactly what we access
+              <ArrowRight size={19} strokeWidth={1.8} aria-hidden="true" />
+            </a>
+            {approvalPending ? (
+              <p className="approval-note">
+                Reddit OAuth approval is pending. The local synthetic preview remains fully interactive.
+              </p>
+            ) : null}
+          </div>
+          <ScanPanel session={session} />
+        </section>
+
+        <section className="process" id="how-it-works" aria-labelledby="process-title">
+          <h2 className="sr-only" id="process-title">How SubShield handles a scan</h2>
+          <article className="process-step">
+            <span className="process-icon"><LockKeyhole size={29} strokeWidth={1.7} /></span>
+            <div><strong>1. Authorize</strong><p>Connect your account and choose one community you moderate.</p></div>
+          </article>
+          <ArrowRight className="process-arrow" size={32} strokeWidth={1.4} aria-hidden="true" />
+          <article className="process-step">
+            <span className="process-icon"><Cpu size={29} strokeWidth={1.7} /></span>
+            <div><strong>2. Scan in memory</strong><p>Run a rules-based check of up to 25 recent public submissions.</p></div>
+          </article>
+          <ArrowRight className="process-arrow" size={32} strokeWidth={1.4} aria-hidden="true" />
+          <article className="process-step">
+            <span className="process-icon"><Trash2 size={29} strokeWidth={1.7} /></span>
+            <div><strong>3. Discard</strong><p>See the response, review it yourself, then clear it immediately.</p></div>
+          </article>
+        </section>
+
+        <section className="data-band" aria-labelledby="data-band-title">
+          <span className="data-band__icon"><ShieldCheck size={36} strokeWidth={1.7} /></span>
+          <div>
+            <h2 id="data-band-title">No Reddit content stored. No background monitoring. No model training.</h2>
+            <p>SubShield runs only when you ask, keeps Reddit content in request memory, and sends no content to AI providers or analytics.</p>
+            <ul className="data-band__list">
+              <li><Check size={15} /> Temporary OAuth only</li>
+              <li><Check size={15} /> Read-only scopes</li>
+              <li><Check size={15} /> Human review required</li>
+            </ul>
+          </div>
+          <a href="/privacy">Read data practices <ArrowRight size={18} /></a>
+        </section>
+      </main>
+      <footer className="site-footer">
+        <span>© 2026 SubShield</span>
+        <nav aria-label="Footer navigation">
+          <a href="/privacy">Privacy</a>
+          <a href="/terms">Terms</a>
+          <a href="https://github.com/doncazper/subshield" target="_blank" rel="noreferrer">GitHub</a>
+        </nav>
+      </footer>
+    </div>
+  );
+}

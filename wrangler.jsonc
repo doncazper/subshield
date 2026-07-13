@@ -1,0 +1,25 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "subshield-review",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2026-07-12",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/oauth/*"]
+  },
+  "vars": {
+    "APP_ENV": "production",
+    "APP_USER_AGENT": "web:SubShield:0.1.0 (by /u/doncazper)",
+    "REDDIT_CLIENT_ID": "PENDING_APPROVAL",
+    "REDDIT_CLIENT_SECRET": "PENDING_APPROVAL",
+    "COOKIE_KEY": "PENDING_APPROVAL"
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 0.1
+  },
+  "upload_source_maps": true
+}
