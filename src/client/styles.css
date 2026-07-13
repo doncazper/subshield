@@ -377,7 +377,7 @@ tr.is-expanded td { background: #f6f9fc; }
   .site-header { min-height: 72px; padding: 12px 18px; gap: 14px; }
   .brand { font-size: 22px; }
   .brand__mark { width: 32px; height: 36px; }
-  .header-action { width: 42px; min-height: 42px; padding: 0; overflow: hidden; color: transparent; gap: 0; }
+  .header-action { width: 42px; min-height: 42px; padding: 0; overflow: hidden; color: var(--ink); font-size: 0; gap: 0; }
   .header-action svg { color: var(--ink); flex: 0 0 auto; }
   .hero { min-height: auto; padding: 50px 18px 24px; gap: 24px; }
   .hero-copy h1 { font-size: clamp(42px, 13vw, 58px); }
