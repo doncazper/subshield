@@ -13,6 +13,8 @@ The project is intentionally narrow:
 
 SubShield is not affiliated with or endorsed by Reddit.
 
+Live application: [https://subshield-review.subshield.workers.dev](https://subshield-review.subshield.workers.dev)
+
 ## Product flow
 
 1. The user explicitly starts Reddit OAuth and grants three read-only scopes.
@@ -79,7 +81,7 @@ COOKIE_KEY=a_random_secret_with_at_least_32_characters
 The registered Reddit redirect URI must exactly match:
 
 ```text
-https://YOUR_HOST/oauth/callback
+https://subshield-review.subshield.workers.dev/oauth/callback
 ```
 
 ## Validation

@@ -56,10 +56,10 @@ Each user-triggered scan makes one moderated-community membership request and on
 
 ## Public URLs
 
-- Homepage: `TO_BE_FILLED_AFTER_DEPLOYMENT`
-- Privacy policy: `TO_BE_FILLED_AFTER_DEPLOYMENT/privacy`
-- Terms: `TO_BE_FILLED_AFTER_DEPLOYMENT/terms`
-- OAuth redirect URI: `TO_BE_FILLED_AFTER_DEPLOYMENT/oauth/callback`
+- Homepage: `https://subshield-review.subshield.workers.dev`
+- Privacy policy: `https://subshield-review.subshield.workers.dev/privacy`
+- Terms: `https://subshield-review.subshield.workers.dev/terms`
+- OAuth redirect URI: `https://subshield-review.subshield.workers.dev/oauth/callback`
 - Source: `https://github.com/doncazper/subshield`
 
 ## Support and deletion contact
