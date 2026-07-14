@@ -90,7 +90,7 @@ export function ScanPanel({ session }: ScanPanelProps) {
       <div className="scan-panel__heading">
         <div>
           <h2 id="scan-title">On-demand community scan</h2>
-          <p className="eyeline">{session.status === "authenticated" ? `Connected as u/${session.username}` : "Interactive local demo · synthetic data only"}</p>
+          <p className="eyeline">{session.status === "authenticated" ? `Connected as u/${session.username}` : "Moderator workflow preview · synthetic examples"}</p>
         </div>
         <div className="scan-panel__quiet">
           <Clock3 size={22} strokeWidth={1.7} aria-hidden="true" />
@@ -103,17 +103,17 @@ export function ScanPanel({ session }: ScanPanelProps) {
 
       <div className="scan-controls">
         {previewMode ? (
-          <div className="demo-source" aria-label="Local demo source">
+          <div className="demo-source" aria-label="Workflow preview source">
             <div className="demo-source__summary">
               <FileText size={18} strokeWidth={1.7} aria-hidden="true" />
               <span>
-                <small>Demo source</small>
+                <small>Preview source</small>
                 <strong>{selectedScenario.inputs.length} synthetic submissions</strong>
                 <em>{selectedScenario.description}</em>
               </span>
             </div>
             <fieldset className="demo-scenarios">
-              <legend>Choose a demo scenario</legend>
+              <legend>Choose a sample queue</legend>
               <div className="demo-scenarios__options">
                 {demoScenarios.map((scenario) => (
                   <button
@@ -161,7 +161,7 @@ export function ScanPanel({ session }: ScanPanelProps) {
           disabled={busy || (session.status === "authenticated" && !selectedCommunity)}
         >
           <Play size={19} fill="none" strokeWidth={1.9} aria-hidden="true" />
-          {busy ? "Scanning in memory…" : previewMode ? "Run local demo scan" : "Run ephemeral scan"}
+          {busy ? "Scanning in memory…" : previewMode ? "Run preview scan" : "Run ephemeral scan"}
         </button>
       </div>
 
@@ -247,7 +247,7 @@ export function ScanPanel({ session }: ScanPanelProps) {
             <strong>Nothing processed yet</strong>
             <span>
               {previewMode
-                ? `Run the local demo to evaluate ${selectedScenario.inputs.length} synthetic submissions in this browser.`
+                ? `Run the preview to evaluate ${selectedScenario.inputs.length} synthetic submissions in this browser.`
                 : "Choose one community and run a scan when you are ready."}
             </span>
           </div>

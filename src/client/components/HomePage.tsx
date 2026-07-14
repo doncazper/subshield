@@ -49,9 +49,9 @@ export function HomePage() {
       <main>
         <section className="hero">
           <div className="hero-copy">
-            <h1>Keep the review queue focused.</h1>
+            <h1>Review one community’s queue with clarity.</h1>
             <p>
-              SubShield surfaces configured spam and safety-rule matches from one community at a time. Decisions stay with moderators.
+              SubShield helps moderators review configured spam and safety-rule matches in one community at a time. Every decision stays with the moderator.
             </p>
             {session.status === "authenticated" ? (
               <a className="button button--primary hero-cta" href="#scan">
@@ -61,7 +61,7 @@ export function HomePage() {
             ) : approvalPending ? (
               <a className="button button--primary hero-cta" href="#scan">
                 <Play size={20} strokeWidth={1.8} aria-hidden="true" />
-                Try the local product demo
+                Explore the moderator workflow
               </a>
             ) : (
               <a className="button button--primary hero-cta" href="/api/auth/reddit">
@@ -77,8 +77,8 @@ export function HomePage() {
               <div className="approval-state" role="status">
                 <Clock3 size={18} strokeWidth={1.8} aria-hidden="true" />
                 <span>
-                  <strong>Reddit Data API review in progress</strong>
-                  OAuth is disabled until Reddit approves access. The demo uses synthetic examples only.
+                  <strong>Reddit account connection unavailable</strong>
+                  Explore the moderator workflow with synthetic examples. No Reddit account or content is used in this preview.
                 </span>
               </div>
             ) : null}
@@ -90,17 +90,17 @@ export function HomePage() {
           <h2 className="sr-only" id="process-title">How SubShield handles a scan</h2>
           <article className="process-step">
             <span className="process-icon"><LockKeyhole size={29} strokeWidth={1.7} /></span>
-            <div><strong>1. Authorize</strong><p>Connect your account and choose one community you moderate.</p></div>
+            <div><strong>1. Connect</strong><p>Connect your moderator account and choose one community you manage.</p></div>
           </article>
           <ArrowRight className="process-arrow" size={32} strokeWidth={1.4} aria-hidden="true" />
           <article className="process-step">
             <span className="process-icon"><Cpu size={29} strokeWidth={1.7} /></span>
-            <div><strong>2. Scan in memory</strong><p>Run a rules-based check of up to 25 recent public submissions.</p></div>
+            <div><strong>2. Review a queue</strong><p>Run a rules-based check of up to 25 recent public submissions.</p></div>
           </article>
           <ArrowRight className="process-arrow" size={32} strokeWidth={1.4} aria-hidden="true" />
           <article className="process-step">
             <span className="process-icon"><Trash2 size={29} strokeWidth={1.7} /></span>
-            <div><strong>3. Discard</strong><p>See the response, review it yourself, then clear it immediately.</p></div>
+            <div><strong>3. Decide</strong><p>Review the explanation yourself, then clear the response when you are done.</p></div>
           </article>
         </section>
 

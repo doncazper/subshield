@@ -41,14 +41,14 @@ export function Header({ session, oauthConfigured, onLoggedOut }: HeaderProps) {
         <div
           className={`header-status ${oauthConfigured === false ? "is-pending" : "is-checking"}`}
           role="status"
-          aria-label={oauthConfigured === false ? "Reddit OAuth review pending" : "Checking Reddit OAuth status"}
+          aria-label={oauthConfigured === false ? "Reddit account connection unavailable" : "Checking Reddit account connection"}
         >
           {oauthConfigured === false ? (
             <Clock3 size={18} strokeWidth={1.8} aria-hidden="true" />
           ) : (
             <ShieldCheck size={18} strokeWidth={1.8} aria-hidden="true" />
           )}
-          <span>{oauthConfigured === false ? "OAuth review pending" : "Checking access"}</span>
+          <span>{oauthConfigured === false ? "Account connection unavailable" : "Checking access"}</span>
         </div>
       )}
     </header>

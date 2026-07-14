@@ -41,8 +41,8 @@ const accessStatusContent: Record<AccessStatus, { title: string; detail: string 
     detail: "Reading the deployment's no-store health endpoint.",
   },
   pending: {
-    title: "Reddit Data API review pending",
-    detail: "OAuth credentials are not configured. The public product demo uses synthetic data only.",
+    title: "Reddit account connection unavailable",
+    detail: "OAuth credentials are not configured. The public workflow preview uses synthetic examples only.",
   },
   configured: {
     title: "Reddit OAuth configured",
@@ -173,7 +173,7 @@ export function SecurityPage() {
   return (
     <PolicyLayout
       title="API access and security"
-      summary="A reviewer-oriented map of SubShield's exact Reddit access, request boundaries, session controls, and public implementation evidence."
+      summary="A technical map of SubShield's exact Reddit access, request boundaries, session controls, and public implementation evidence."
     >
       <section>
         <h2>Live deployment status</h2>

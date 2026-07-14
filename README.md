@@ -10,8 +10,6 @@ SubShield is an open-source, external Reddit OAuth web application for authorize
 
 > **Access status:** Reddit Data API access was requested on July 13, 2026. Until Reddit approves and issues OAuth credentials, the public deployment keeps OAuth disabled and provides a fully local demo that uses only synthetic examples.
 
-![SubShield live approval-pending product demo](./docs/subshield-live.png)
-
 SubShield is intentionally narrow:
 
 - temporary, read-only OAuth scopes: `identity`, `read`, and `mysubreddits`
@@ -27,8 +25,8 @@ SubShield is independent software and is not affiliated with or endorsed by Redd
 ## Reviewer quick start
 
 1. Open the [live application](https://subshield-review.subshield.workers.dev).
-2. Confirm the header shows **OAuth review pending**. This is live deployment state, not a mock control.
-3. Select **Try the local product demo**, choose a scenario, and then **Run local demo scan**.
+2. Confirm the header shows **Account connection unavailable**. This is live deployment state, not a mock control.
+3. Select **Explore the moderator workflow**, choose a sample queue, and then **Run preview scan**.
 4. Confirm the interface reports **Local-only: 0 Reddit requests** and expand **View rules** on a synthetic row to inspect every deterministic match.
 5. Use the short [demo test checklist](./docs/DEMO_TEST_CHECKLIST.md) to exercise every scenario.
 6. Review the public [privacy page](https://subshield-review.subshield.workers.dev/privacy), [API and security page](https://subshield-review.subshield.workers.dev/security), and [terms](https://subshield-review.subshield.workers.dev/terms).

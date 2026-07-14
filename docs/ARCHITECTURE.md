@@ -33,9 +33,9 @@ SubShield is one stateless Cloudflare Worker deployment containing a React stati
 
 | Route | Purpose | Cache policy |
 |---|---|---|
-| `/` | Product and synthetic approval-pending demo | Static document |
+| `/` | Product and synthetic workflow preview | Static document |
 | `/privacy` | Public privacy and data practices | `no-store` |
-| `/security` | Reviewer-facing API and security evidence | `no-store` |
+| `/security` | Public API and security details | `no-store` |
 | `/terms` | Public terms | `no-store` |
 | `/api/health` | Configuration state and declared scope metadata | `no-store` |
 | `/api/auth/reddit` | Start temporary Reddit OAuth when configured | redirect, `no-store` |
