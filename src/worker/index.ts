@@ -166,6 +166,15 @@ async function handleScan(request: Request, env: Env): Promise<Response> {
   });
 }
 
+async function fetchAsset(request: Request, env: Env): Promise<Response> {
+  const response = await env.ASSETS.fetch(request);
+  const contentType = response.headers.get("Content-Type") ?? "";
+  if (!contentType.includes("text/html")) return response;
+  const headers = new Headers(response.headers);
+  headers.set("Cache-Control", "no-store, max-age=0");
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
 async function route(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   if (request.method === "GET" && url.pathname === "/api/health") {
@@ -188,7 +197,7 @@ async function route(request: Request, env: Env): Promise<Response> {
   if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/oauth/")) {
     return json({ error: "Not found" }, 404);
   }
-  return env.ASSETS.fetch(request);
+  return fetchAsset(request, env);
 }
 
 export default {
