@@ -1,4 +1,4 @@
-import { ArrowRight, Check, Cpu, LockKeyhole, ShieldCheck, Trash2, UserRound } from "lucide-react";
+import { ArrowRight, Check, Clock3, Cpu, LockKeyhole, Play, ShieldCheck, Trash2, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import { loadHealth, loadSession } from "../lib/api";
 import type { AppHealth, SessionState } from "../types";
@@ -36,22 +36,32 @@ export function HomePage() {
     return () => controller.abort();
   }, []);
 
-  const approvalPending = health?.configured === false;
+  const oauthConfigured = session.status === "authenticated"
+    ? true
+    : session.status === "anonymous"
+      ? session.configured
+      : health?.configured;
+  const approvalPending = oauthConfigured === false;
 
   return (
     <div className="app-shell">
-      <Header session={session} onLoggedOut={() => void refreshSession()} />
+      <Header session={session} oauthConfigured={oauthConfigured} onLoggedOut={() => void refreshSession()} />
       <main>
         <section className="hero">
           <div className="hero-copy">
             <h1>Keep the review queue focused.</h1>
             <p>
-              SubShield surfaces likely spam and high-risk language from one community at a time. Decisions stay with moderators.
+              SubShield surfaces configured spam and safety-rule matches from one community at a time. Decisions stay with moderators.
             </p>
             {session.status === "authenticated" ? (
               <a className="button button--primary hero-cta" href="#scan">
                 Open your community scan
                 <ArrowRight size={19} strokeWidth={1.9} aria-hidden="true" />
+              </a>
+            ) : approvalPending ? (
+              <a className="button button--primary hero-cta" href="#scan">
+                <Play size={20} strokeWidth={1.8} aria-hidden="true" />
+                Try the local product demo
               </a>
             ) : (
               <a className="button button--primary hero-cta" href="/api/auth/reddit">
@@ -64,9 +74,13 @@ export function HomePage() {
               <ArrowRight size={19} strokeWidth={1.8} aria-hidden="true" />
             </a>
             {approvalPending ? (
-              <p className="approval-note">
-                Reddit OAuth approval is pending. The local synthetic preview remains fully interactive.
-              </p>
+              <div className="approval-state" role="status">
+                <Clock3 size={18} strokeWidth={1.8} aria-hidden="true" />
+                <span>
+                  <strong>Reddit Data API review in progress</strong>
+                  OAuth is disabled until Reddit approves access. The demo uses synthetic examples only.
+                </span>
+              </div>
             ) : null}
           </div>
           <ScanPanel session={session} />
@@ -94,7 +108,7 @@ export function HomePage() {
           <span className="data-band__icon"><ShieldCheck size={36} strokeWidth={1.7} /></span>
           <div>
             <h2 id="data-band-title">No Reddit content stored. No background monitoring. No model training.</h2>
-            <p>SubShield runs only when you ask, keeps Reddit content in request memory, and sends no content to AI providers or analytics.</p>
+            <p>SubShield runs only when you ask, keeps Reddit content in request memory, and evaluates only published deterministic rules.</p>
             <ul className="data-band__list">
               <li><Check size={15} /> Temporary OAuth only</li>
               <li><Check size={15} /> Read-only scopes</li>
@@ -105,9 +119,13 @@ export function HomePage() {
         </section>
       </main>
       <footer className="site-footer">
-        <span>© 2026 SubShield</span>
+        <div className="site-footer__identity">
+          <span>© 2026 SubShield</span>
+          <span>Independent open-source software; not affiliated with or endorsed by Reddit.</span>
+        </div>
         <nav aria-label="Footer navigation">
           <a href="/privacy">Privacy</a>
+          <a href="/security">Security</a>
           <a href="/terms">Terms</a>
           <a href="https://github.com/doncazper/subshield" target="_blank" rel="noreferrer">GitHub</a>
         </nav>

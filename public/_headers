@@ -13,3 +13,6 @@
 
 /terms
   Cache-Control: no-store
+
+/security
+  Cache-Control: no-store

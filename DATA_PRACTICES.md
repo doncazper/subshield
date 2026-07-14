@@ -31,8 +31,10 @@ SubShield does not collect or retain:
 ## Processing boundaries
 
 - A scan starts only after an authenticated moderator chooses a community and clicks the scan button.
+- The approval-pending public demo uses only committed synthetic examples and makes no Reddit request.
 - The Worker re-checks that the connected user moderates the requested community.
 - Each scan is capped at 25 recent public submissions.
+- Scan request bodies are measured in UTF-8 bytes and rejected above 2 KB; malformed JSON returns a bounded client error.
 - Self-text is used only during scoring and is intentionally omitted from the response.
 - Worker error logs contain only the request path and error class, never OAuth codes, tokens, usernames, community names, submissions, or scores.
 - API responses set `Cache-Control: no-store`, `Pragma: no-cache`, and `X-Content-Type-Options: nosniff`.
@@ -53,3 +55,5 @@ Any proposed change that introduces a new Reddit endpoint, scope, persistent sto
 2. a code and threat-model review;
 3. new tests;
 4. Reddit approval before production use when required by Reddit policy.
+
+See `THREAT_MODEL.md`, `docs/ARCHITECTURE.md`, and `REVIEWER_GUIDE.md` for the security boundaries, system map, and claim-to-evidence index.

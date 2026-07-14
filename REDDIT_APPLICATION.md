@@ -12,11 +12,11 @@ Web app
 
 ## Short description
 
-SubShield is an open-source, read-only community-safety review workspace for authorized subreddit moderators. A moderator explicitly connects their Reddit account, chooses one community they moderate, and runs an on-demand rules-based scan of up to 25 recent public submissions to surface possible spam and high-risk language for human review.
+SubShield is an open-source, read-only moderation review workspace for authorized subreddit moderators. A moderator explicitly connects their Reddit account, chooses one community they moderate, and runs an on-demand rules-based scan of up to 25 recent public submissions to surface configured spam and safety-rule matches for human review.
 
 ## Detailed use case
 
-SubShield helps moderators prioritize a small, current review set without automating moderation actions. It does not run a stream or background poll. Nothing is fetched until the connected moderator selects a community and clicks **Run ephemeral scan**. The app validates that the user moderates the requested community, fetches at most 25 recent public submissions, evaluates a published deterministic rule set in request memory, returns the result to that moderator, and discards the Reddit response after the request completes.
+SubShield helps moderators prioritize a small, current review set without automating moderation actions. It does not run a stream or background poll. Nothing is fetched until the connected moderator selects a community and clicks **Run ephemeral scan**. The app validates that the user moderates the requested community, fetches at most 25 recent public submissions, evaluates a published deterministic spam and safety-phrase rule set in request memory, returns the matched rules to that moderator, and discards the Reddit response after the request completes.
 
 The app never posts, comments, votes, reports, removes, approves, locks, distinguishes, or messages. Every decision and action remains with the moderator on Reddit.
 

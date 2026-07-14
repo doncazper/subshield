@@ -25,6 +25,7 @@ const noStoreHeaders = {
   Pragma: "no-cache",
   "X-Content-Type-Options": "nosniff",
 };
+const requestTextEncoder = new TextEncoder();
 
 function json(value: unknown, status = 200, extraHeaders?: HeadersInit): Response {
   const headers = new Headers(noStoreHeaders);
@@ -133,10 +134,18 @@ async function handleScan(request: Request, env: Env): Promise<Response> {
   if (!sameOrigin(request)) return json({ error: "Origin check failed" }, 403);
   const contentLength = Number(request.headers.get("Content-Length") ?? "0");
   if (contentLength > 2_048) return json({ error: "Request body is too large" }, 413);
+  const rawBody = await request.text();
+  if (requestTextEncoder.encode(rawBody).byteLength > 2_048) {
+    return json({ error: "Request body is too large" }, 413);
+  }
+  let payload: unknown;
+  try {
+    payload = JSON.parse(rawBody) as unknown;
+  } catch {
+    return json({ error: "Request body must be valid JSON" }, 400);
+  }
   const session = await sessionFromRequest(request, env);
   if (!session) return json({ error: "Authorization required" }, 401);
-
-  const payload: unknown = await request.json();
   if (!isRecord(payload) || typeof payload.subreddit !== "string" || !/^[A-Za-z0-9_]{2,21}$/.test(payload.subreddit)) {
     return json({ error: "Choose a valid community" }, 400);
   }

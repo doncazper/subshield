@@ -19,6 +19,9 @@ Include a concise description, affected route or component, reproduction steps, 
 - Production credentials must be Cloudflare secrets and must never appear in source, `wrangler.jsonc`, logs, screenshots, issues, or chat.
 - API responses are non-cacheable and error logs intentionally omit user and Reddit content.
 - The Worker validates moderator-community membership again before every scan.
+- Scan bodies are measured and capped at 2 KB, and recent-submission responses are defensively capped at 25 items.
+
+The public threat model is maintained in `THREAT_MODEL.md`. CI runs the complete typecheck, test, and production build; CodeQL scans JavaScript and TypeScript changes; Dependabot monitors npm and GitHub Actions dependencies.
 
 ## Supported versions
 

@@ -93,7 +93,7 @@ export async function getRecentSubmissions(
   userAgent: string,
 ): Promise<SubmissionInput[]> {
   const payload = await oauthFetch(`/r/${encodeURIComponent(subreddit)}/new?limit=25&raw_json=1`, token, userAgent);
-  return listingChildren(payload).flatMap((child) => {
+  return listingChildren(payload).slice(0, 25).flatMap((child) => {
     const id = asString(child.id);
     const title = asString(child.title);
     const selfText = asString(child.selftext) ?? "";
