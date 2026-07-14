@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, Clock3, Code2, Database, Github, KeyRound, Server, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Check, Clock3, Code2, Database, KeyRound, Server, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { loadHealth } from "../lib/api";
 import { Brand } from "./Brand";
@@ -27,7 +27,7 @@ function PolicyLayout({ title, summary, children }: PolicyLayoutProps) {
       </main>
       <footer className="policy-footer">
         <span>SubShield is open source and is not affiliated with or endorsed by Reddit.</span>
-        <a href="https://github.com/doncazper/subshield" target="_blank" rel="noreferrer"><Github size={16} /> View source</a>
+        <a href="https://github.com/doncazper/subshield" target="_blank" rel="noreferrer"><Code2 size={16} /> View source</a>
       </footer>
     </div>
   );

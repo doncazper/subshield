@@ -1,4 +1,4 @@
-import { Clock3, Github, LogOut, ShieldCheck, UserRound } from "lucide-react";
+import { Clock3, Code2, LogOut, ShieldCheck, UserRound } from "lucide-react";
 import type { SessionState } from "../types";
 import { logout } from "../lib/api";
 import { Brand } from "./Brand";
@@ -23,7 +23,7 @@ export function Header({ session, oauthConfigured, onLoggedOut }: HeaderProps) {
         <a href="/privacy">Data practices</a>
         <a href="/security">API &amp; security</a>
         <a href="https://github.com/doncazper/subshield" target="_blank" rel="noreferrer">
-          <Github size={17} strokeWidth={1.8} aria-hidden="true" />
+          <Code2 size={17} strokeWidth={1.8} aria-hidden="true" />
           Open source
         </a>
       </nav>
