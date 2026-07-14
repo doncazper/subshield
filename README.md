@@ -28,10 +28,11 @@ SubShield is independent software and is not affiliated with or endorsed by Redd
 
 1. Open the [live application](https://subshield-review.subshield.workers.dev).
 2. Confirm the header shows **OAuth review pending**. This is live deployment state, not a mock control.
-3. Select **Try the local product demo** and then **Run local demo scan**.
-4. Expand **View rules** on a synthetic row to inspect every deterministic match.
-5. Review the public [privacy page](https://subshield-review.subshield.workers.dev/privacy), [API and security page](https://subshield-review.subshield.workers.dev/security), and [terms](https://subshield-review.subshield.workers.dev/terms).
-6. Use [REVIEWER_GUIDE.md](./REVIEWER_GUIDE.md) for a source-to-claim map.
+3. Select **Try the local product demo**, choose a scenario, and then **Run local demo scan**.
+4. Confirm the interface reports **Local-only: 0 Reddit requests** and expand **View rules** on a synthetic row to inspect every deterministic match.
+5. Use the short [demo test checklist](./docs/DEMO_TEST_CHECKLIST.md) to exercise every scenario.
+6. Review the public [privacy page](https://subshield-review.subshield.workers.dev/privacy), [API and security page](https://subshield-review.subshield.workers.dev/security), and [terms](https://subshield-review.subshield.workers.dev/terms).
+7. Use [REVIEWER_GUIDE.md](./REVIEWER_GUIDE.md) for a source-to-claim map.
 
 The approval-pending demo never contacts Reddit. After OAuth is configured, the same interface switches to the authorized moderator workflow described below.
 
@@ -126,6 +127,7 @@ The automated suite covers scoring transparency, encrypted session handling, sec
 ## Review and policy documents
 
 - [Reviewer guide](./REVIEWER_GUIDE.md)
+- [Local demo test checklist](./docs/DEMO_TEST_CHECKLIST.md)
 - [Privacy engineering data inventory](./DATA_PRACTICES.md)
 - [Threat model](./THREAT_MODEL.md)
 - [Architecture](./docs/ARCHITECTURE.md)

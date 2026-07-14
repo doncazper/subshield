@@ -1,53 +1,9 @@
-import { ChevronDown, Clock3, ExternalLink, FileText, Info, Play, X } from "lucide-react";
+import { ChevronDown, Clock3, ExternalLink, FileText, Info, Play, ShieldCheck, X } from "lucide-react";
 import { Fragment, useState } from "react";
-import { scoreSubmission, type ScoredSubmission, type SubmissionInput } from "../../shared/scoring";
+import { scoreSubmission, type ScoredSubmission } from "../../shared/scoring";
 import { runScan } from "../lib/api";
+import { demoScenarios } from "../lib/demoScenarios";
 import type { SessionState } from "../types";
-
-const syntheticInputs: SubmissionInput[] = [
-  {
-    id: "preview-1",
-    title: "Quick question about a build error",
-    selfText: "I keep seeing this error after upgrading. What should I check?",
-    domain: "self",
-    permalink: "",
-    createdUtc: 0,
-  },
-  {
-    id: "preview-2",
-    title: "Limited time offer you can’t miss!!!!",
-    selfText: "Act now. Message me for details and guaranteed income.",
-    domain: "tinyurl.com",
-    permalink: "",
-    createdUtc: 0,
-  },
-  {
-    id: "preview-3",
-    title: "Check out this community resource",
-    selfText: "A reference guide that may answer common setup questions.",
-    domain: "example.org",
-    permalink: "",
-    createdUtc: 0,
-  },
-  {
-    id: "preview-4",
-    title: "Stop posting bad advice",
-    selfText: "You're an idiot. Shut up and stop posting.",
-    domain: "self",
-    permalink: "",
-    createdUtc: 0,
-  },
-  {
-    id: "preview-5",
-    title: "Earn cash fast today",
-    selfText: "Risk free profit. Send crypto now for guaranteed income.",
-    domain: "bit.ly",
-    permalink: "",
-    createdUtc: 0,
-  },
-];
-
-const syntheticResults = syntheticInputs.map(scoreSubmission);
 
 function SignalTag({ signal }: { signal: ScoredSubmission["spam"] }) {
   const matchCount = signal.reasons.length;
@@ -92,19 +48,30 @@ export function ScanPanel({ session }: ScanPanelProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [status, setStatus] = useState("Ready — nothing has been processed");
   const [busy, setBusy] = useState(false);
+  const [selectedScenarioId, setSelectedScenarioId] = useState(demoScenarios[0].id);
 
   const selectedCommunity = community && communities.includes(community)
     ? community
     : communities[0] ?? "";
   const previewMode = session.status !== "authenticated";
+  const selectedScenario = demoScenarios.find((scenario) => scenario.id === selectedScenarioId) ?? demoScenarios[0];
+
+  const selectDemoScenario = (scenarioId: string) => {
+    const scenario = demoScenarios.find((candidate) => candidate.id === scenarioId);
+    if (!scenario) return;
+    setSelectedScenarioId(scenario.id);
+    setResults([]);
+    setExpandedId(null);
+    setStatus(`Selected ${scenario.label} — local only, 0 Reddit requests`);
+  };
 
   const handleScan = async () => {
     setBusy(true);
     setExpandedId(null);
     try {
       if (session.status !== "authenticated") {
-        setResults(syntheticResults);
-        setStatus(`Local demo completed at ${new Date().toLocaleTimeString()} — no Reddit data used`);
+        setResults(selectedScenario.inputs.map(scoreSubmission));
+        setStatus(`Local demo completed at ${new Date().toLocaleTimeString()} — ${selectedScenario.inputs.length} synthetic submissions, 0 Reddit requests`);
         return;
       }
       if (!selectedCommunity) throw new Error("Choose a community first");
@@ -136,13 +103,35 @@ export function ScanPanel({ session }: ScanPanelProps) {
 
       <div className="scan-controls">
         {previewMode ? (
-          <div className="demo-source" role="status" aria-label="Local demo source">
-            <FileText size={18} strokeWidth={1.7} aria-hidden="true" />
-            <span>
-              <small>Demo source</small>
-              <strong>Five synthetic submissions</strong>
-              <em>No Reddit connection or content</em>
-            </span>
+          <div className="demo-source" aria-label="Local demo source">
+            <div className="demo-source__summary">
+              <FileText size={18} strokeWidth={1.7} aria-hidden="true" />
+              <span>
+                <small>Demo source</small>
+                <strong>{selectedScenario.inputs.length} synthetic submissions</strong>
+                <em>{selectedScenario.description}</em>
+              </span>
+            </div>
+            <fieldset className="demo-scenarios">
+              <legend>Choose a demo scenario</legend>
+              <div className="demo-scenarios__options">
+                {demoScenarios.map((scenario) => (
+                  <button
+                    className="demo-scenario-button"
+                    type="button"
+                    key={scenario.id}
+                    aria-pressed={selectedScenario.id === scenario.id}
+                    onClick={() => selectDemoScenario(scenario.id)}
+                  >
+                    {scenario.label}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+            <p className="demo-request-proof" role="status">
+              <ShieldCheck size={15} strokeWidth={1.9} aria-hidden="true" />
+              <span><strong>Local-only: 0 Reddit requests.</strong> Examples are evaluated in this browser.</span>
+            </p>
           </div>
         ) : (
           <label className="field-label" htmlFor="community">
@@ -258,7 +247,7 @@ export function ScanPanel({ session }: ScanPanelProps) {
             <strong>Nothing processed yet</strong>
             <span>
               {previewMode
-                ? "Run the local demo to evaluate five synthetic submissions in this browser."
+                ? `Run the local demo to evaluate ${selectedScenario.inputs.length} synthetic submissions in this browser.`
                 : "Choose one community and run a scan when you are ready."}
             </span>
           </div>

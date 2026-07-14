@@ -17,10 +17,11 @@ The live `/api/health` endpoint reports only whether OAuth is configured plus th
 1. Open the live application and confirm the header shows **OAuth review pending**.
 2. Click **Try the local product demo**.
 3. Confirm the scan panel starts empty and states that nothing has been processed.
-4. Click **Run local demo scan**.
-5. Confirm five explicitly synthetic submissions appear.
-6. Expand **View rules** to inspect the exact deterministic phrases, domain, link, punctuation, or formatting rules that matched.
-7. Clear the results and confirm the interface returns to an empty state.
+4. Choose a named synthetic scenario and confirm the panel states **Local-only: 0 Reddit requests**.
+5. Click **Run local demo scan**.
+6. Confirm the selected explicitly synthetic submissions appear.
+7. Expand **View rules** to inspect the exact deterministic phrases, domain, link, punctuation, or formatting rules that matched.
+8. Clear the results and confirm the interface returns to an empty state.
 
 Once Reddit credentials are configured, anonymous users receive a standard **Connect Reddit account** action instead. Authenticated users can select only communities returned by Reddit's moderated-community endpoint.
 
