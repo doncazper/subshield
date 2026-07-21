@@ -4,7 +4,7 @@
 [![CodeQL](https://github.com/doncazper/subshield/actions/workflows/codeql.yml/badge.svg)](https://github.com/doncazper/subshield/actions/workflows/codeql.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 
-SubShield is an open-source, external Reddit OAuth web application for authorized subreddit moderators. A moderator connects their own Reddit account, chooses one community they moderate, and runs an on-demand, deterministic scan of up to 25 recent public submissions. The response explains configured spam and safety-rule matches for human review; SubShield never takes a moderation action.
+SubShield is an open-source, external Reddit OAuth web application for authorized subreddit moderators. A moderator connects their own Reddit account, chooses one community they moderate, and runs an on-demand, deterministic scan of up to 25 recent public submissions. The response explains published spam and safety-rule matches for human review; SubShield never takes a moderation action.
 
 **Live application:** [https://subshield-review.subshield.workers.dev](https://subshield-review.subshield.workers.dev)
 
@@ -19,30 +19,34 @@ SubShield is intentionally narrow:
 - no database, object storage, analytics payloads, or Reddit-content logs
 - no machine-learning inference, model training, sentiment profiling, or sensitive-attribute inference
 - no refresh token, write action, or automated moderation decision
+- a short per-session scan cooldown to avoid accidental repeated Reddit requests
 
 SubShield is independent software and is not affiliated with or endorsed by Reddit.
 
 ## Reviewer quick start
 
 1. Open the [live application](https://subshield-review.subshield.workers.dev).
-2. Confirm the header shows **Account connection unavailable**. This is live deployment state, not a mock control.
+2. Confirm the header shows **Preview mode** while OAuth is not configured. This is live deployment state, not a mock control.
 3. Select **Explore the moderator workflow**, choose a sample queue, and then **Run preview scan**.
 4. Confirm the interface reports **Local-only: 0 Reddit requests** and expand **View rules** on a synthetic row to inspect every deterministic match.
-5. Use the short [demo test checklist](./docs/DEMO_TEST_CHECKLIST.md) to exercise every scenario.
-6. Review the public [privacy page](https://subshield-review.subshield.workers.dev/privacy), [API and security page](https://subshield-review.subshield.workers.dev/security), and [terms](https://subshield-review.subshield.workers.dev/terms).
-7. Use [REVIEWER_GUIDE.md](./REVIEWER_GUIDE.md) for a source-to-claim map.
+5. Select **Manual review** to enter a submission you are already reviewing, or paste a JSON queue of up to 25 items.
+6. Confirm the manual panel reports **Manual input · 0 Reddit requests**, run the queue, and expand **View rules**.
+7. Use the short [demo test checklist](./docs/DEMO_TEST_CHECKLIST.md) to exercise every scenario.
+8. Review the public [privacy page](https://subshield-review.subshield.workers.dev/privacy), [API and security page](https://subshield-review.subshield.workers.dev/security), and [terms](https://subshield-review.subshield.workers.dev/terms).
+9. Use [REVIEWER_GUIDE.md](./REVIEWER_GUIDE.md) for a source-to-claim map.
 
-The approval-pending demo never contacts Reddit. After OAuth is configured, the same interface switches to the authorized moderator workflow described below.
+The approval-pending demo never contacts Reddit. Manual review is also useful without OAuth: a moderator can deliberately enter or paste content they already have permission to review, and SubShield evaluates it only in browser memory. After OAuth is configured, the same interface adds the authorized community workflow described below.
 
 ## Product flow
 
-1. The user explicitly starts Reddit OAuth and grants three read-only scopes.
-2. Reddit returns a temporary access token that expires in at most one hour.
-3. The token is encrypted into an essential, `HttpOnly`, `Secure`, `SameSite=Lax` cookie. It is not stored server-side.
-4. The app lists only communities the connected user moderates.
-5. The user chooses one community and clicks **Run ephemeral scan**.
-6. The Worker revalidates moderator membership, requests at most 25 recent public submissions, evaluates published deterministic rules in request memory, and returns a `Cache-Control: no-store` response.
-7. Reddit content and derived rule matches are not written to storage or content logs. The browser holds the response only in React state until it is cleared or the page is closed.
+1. A moderator can choose **Manual review** and enter one submission or paste a JSON queue of up to 25 submissions. This branch makes no Reddit request and keeps the entries in browser memory.
+2. The user may explicitly start Reddit OAuth and grant three read-only scopes to add live community context.
+3. Reddit returns a temporary access token that expires in at most one hour.
+4. The token is encrypted into an essential, `HttpOnly`, `Secure`, `SameSite=Lax` cookie. It is not stored server-side.
+5. The app lists only communities the connected user moderates.
+6. The user chooses one community and clicks **Run ephemeral scan**.
+7. The Worker revalidates moderator membership, requests at most 25 recent public submissions, evaluates published deterministic rules in request memory, enforces a short per-session scan cooldown, and returns a `Cache-Control: no-store` response.
+8. Reddit content, manually entered content, and derived rule matches are not written to storage or content logs. The browser holds the response only in React state until it is cleared or the page is closed.
 
 ## OAuth scopes and endpoints
 
@@ -83,7 +87,7 @@ npm run cf:types
 npm run dev
 ```
 
-The Vite development server provides the synthetic, fully local product demo. To test the Worker and static assets together:
+The Vite development server provides synthetic examples and a manual-review path without OAuth or Reddit requests. To test the Worker and static assets together:
 
 ```bash
 npm run build
@@ -119,8 +123,9 @@ The automated suite covers scoring transparency, encrypted session handling, sec
 2. Register that origin and `/oauth/callback` in Reddit's web-app application request.
 3. After Reddit issues the client ID and secret, remove the three `PENDING_APPROVAL` variables from `wrangler.jsonc`, declare encrypted secret bindings, and set them with `wrangler secret put`.
 4. Generate a cryptographically random cookie key of at least 32 characters and store it only as a Cloudflare secret.
-5. Run the full checks, redeploy, and test the complete OAuth flow.
-6. Register the approved Data API app for Reddit's app-profile labeling process when applicable.
+5. Add a Cloudflare edge rate-limit rule for `POST /api/scan` before enabling public OAuth.
+6. Run the full checks, redeploy, and test the complete OAuth flow.
+7. Register the approved Data API app for Reddit's app-profile labeling process when applicable.
 
 ## Review and policy documents
 

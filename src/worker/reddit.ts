@@ -1,8 +1,23 @@
 import type { SubmissionInput } from "../shared/scoring";
 
+const REDDIT_TIMEOUT_MS = 10_000;
+const MAX_REDDIT_RESPONSE_BYTES = 2_000_000;
+
 interface TokenResult {
   accessToken: string;
   expiresIn: number;
+}
+
+export class RedditApiError extends Error {
+  readonly status: number;
+  readonly retryAfter: string | null;
+
+  constructor(status: number, retryAfter: string | null = null) {
+    super(`Reddit API returned ${status}`);
+    this.name = "RedditApiError";
+    this.status = status;
+    this.retryAfter = retryAfter;
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -17,9 +32,49 @@ function asNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+async function readLimitedText(response: Response): Promise<string> {
+  const contentLength = Number(response.headers.get("Content-Length") ?? "");
+  if (Number.isFinite(contentLength) && contentLength > MAX_REDDIT_RESPONSE_BYTES) {
+    throw new Error("Reddit response was too large");
+  }
+  if (!response.body) return "";
+
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      totalBytes += value.byteLength;
+      if (totalBytes > MAX_REDDIT_RESPONSE_BYTES) {
+        await reader.cancel();
+        throw new Error("Reddit response was too large");
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const bytes = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
+}
+
 async function parseJsonResponse(response: Response): Promise<unknown> {
-  if (!response.ok) throw new Error(`Reddit API returned ${response.status}`);
-  return response.json<unknown>();
+  if (!response.ok) throw new RedditApiError(response.status, response.headers.get("Retry-After"));
+  const rawBody = await readLimitedText(response);
+  try {
+    return JSON.parse(rawBody) as unknown;
+  } catch {
+    throw new Error("Reddit returned invalid JSON");
+  }
 }
 
 async function oauthFetch(path: string, token: string, userAgent: string): Promise<unknown> {
@@ -29,6 +84,7 @@ async function oauthFetch(path: string, token: string, userAgent: string): Promi
       Authorization: `Bearer ${token}`,
       "User-Agent": userAgent,
     },
+    signal: AbortSignal.timeout(REDDIT_TIMEOUT_MS),
   });
   return parseJsonResponse(response);
 }
@@ -54,13 +110,14 @@ export async function exchangeAuthorizationCode(
       "User-Agent": userAgent,
     },
     body,
+    signal: AbortSignal.timeout(REDDIT_TIMEOUT_MS),
   });
   const payload = await parseJsonResponse(response);
   if (!isRecord(payload)) throw new Error("Unexpected Reddit token response");
   const accessToken = asString(payload.access_token);
   const expiresIn = asNumber(payload.expires_in);
-  if (!accessToken || !expiresIn) throw new Error("Reddit token response was incomplete");
-  return { accessToken, expiresIn: Math.min(expiresIn, 3_600) };
+  if (!accessToken || expiresIn === null || expiresIn <= 0) throw new Error("Reddit token response was incomplete");
+  return { accessToken, expiresIn: Math.min(Math.floor(expiresIn), 3_600) };
 }
 
 export async function getIdentity(token: string, userAgent: string): Promise<string> {

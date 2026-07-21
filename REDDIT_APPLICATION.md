@@ -12,11 +12,11 @@ Web app
 
 ## Short description
 
-SubShield is an open-source, read-only moderation review workspace for authorized subreddit moderators. A moderator explicitly connects their Reddit account, chooses one community they moderate, and runs an on-demand rules-based scan of up to 25 recent public submissions to surface configured spam and safety-rule matches for human review.
+SubShield is an open-source, read-only moderation review workspace for authorized subreddit moderators. A moderator explicitly connects their Reddit account, chooses one community they moderate, and runs an on-demand rules-based scan of up to 25 recent public submissions to surface published spam and safety-rule matches for human review.
 
 ## Detailed use case
 
-SubShield helps moderators prioritize a small, current review set without automating moderation actions. It does not run a stream or background poll. Nothing is fetched until the connected moderator selects a community and clicks **Run ephemeral scan**. The app validates that the user moderates the requested community, fetches at most 25 recent public submissions, evaluates a published deterministic spam and safety-phrase rule set in request memory, returns the matched rules to that moderator, and discards the Reddit response after the request completes.
+SubShield helps moderators prioritize a small, current review set without automating moderation actions. It does not run a stream or background poll. Moderators can use **Manual review** without OAuth by entering or pasting content they are already reviewing; that path makes zero Reddit requests and evaluates the shared deterministic rules in browser memory. When live community context is useful, the connected moderator selects a community and clicks **Run ephemeral scan**. The app validates that the user moderates the requested community, fetches at most 25 recent public submissions, evaluates a published deterministic spam and safety-phrase rule set in request memory, returns the matched rules to that moderator, and discards the Reddit response after the request completes.
 
 The app never posts, comments, votes, reports, removes, approves, locks, distinguishes, or messages. Every decision and action remains with the moderator on Reddit.
 
@@ -34,7 +34,7 @@ No `history`, write, vote, submit, report, private-message, or moderator-action 
 
 ## Data handling and retention
 
-SubShield has no database or Reddit-content storage. Reddit content, community names, usernames, scan results, and derived scores are never written to KV, D1, R2, files, queues, logs, or analytics. They exist only in Worker request memory and the current browser’s React state. Scan and session responses set `Cache-Control: no-store`.
+SubShield has no database or Reddit-content storage. Reddit content, manually entered content, community names, usernames, scan results, and derived scores are never written to KV, D1, R2, files, queues, logs, or analytics. OAuth-fetched content exists only in Worker request memory and the current browser’s React state; manually entered content stays in the current browser’s React state. Scan and session responses set `Cache-Control: no-store`.
 
 The temporary access token is encrypted into an essential `HttpOnly`, `Secure`, `SameSite=Lax` cookie that expires with the token in at most one hour. It is not stored server-side. The OAuth state cookie expires after ten minutes. Logging out clears the session cookie immediately. No refresh token is requested or retained.
 
@@ -48,11 +48,11 @@ Cloudflare hosts the stateless Worker and static assets. Reddit content is not w
 
 ## User controls
 
-Users explicitly authorize the app, start every scan themselves, choose exactly one community per scan, can clear results immediately, can log out to clear the auth cookie, and can revoke the app from Reddit’s connected-app settings.
+Users explicitly authorize the app when they choose live community context, start every scan themselves, choose exactly one community per scan, can clear results immediately, can remove manually queued entries, can log out to clear the auth cookie, and can revoke the app from Reddit’s connected-app settings.
 
 ## Rate and volume limits
 
-Each user-triggered scan makes one moderated-community membership request and one recent-submissions request capped at 25 items. There are no background requests, scheduled jobs, streams, bulk exports, pagination loops, or attempts to exceed Reddit rate limits.
+Each user-triggered scan makes one moderated-community membership request and one recent-submissions request capped at 25 items. A short per-session cooldown prevents accidental repeated scans. There are no background requests, scheduled jobs, streams, bulk exports, pagination loops, or attempts to exceed Reddit rate limits.
 
 ## Public URLs
 

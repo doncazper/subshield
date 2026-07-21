@@ -17,8 +17,10 @@ import {
   getIdentity,
   getModeratedCommunities,
   getRecentSubmissions,
+  RedditApiError,
 } from "./reddit";
 
+const MIN_SCAN_INTERVAL_MS = 10_000;
 const noStoreHeaders = {
   "Cache-Control": "no-store, max-age=0",
   "Content-Type": "application/json; charset=utf-8",
@@ -53,6 +55,29 @@ function isConfigured(env: Env): boolean {
 function sameOrigin(request: Request): boolean {
   const origin = request.headers.get("Origin");
   return origin !== null && origin === new URL(request.url).origin;
+}
+
+function redditErrorResponse(error: unknown, clearSession = false): Response | null {
+  if (!(error instanceof RedditApiError)) return null;
+  if ((error.status === 401 || error.status === 403) && clearSession) {
+    return json({ authenticated: false, configured: true }, 200, {
+      "Set-Cookie": clearCookie(SESSION_COOKIE),
+    });
+  }
+  const headers = error.retryAfter ? { "Retry-After": error.retryAfter } : undefined;
+  if (error.status === 429) {
+    return json({ error: "Reddit is rate-limiting requests. Try again shortly." }, 429, headers);
+  }
+  if (error.status === 401 || error.status === 403) {
+    return json({ error: "Reddit authorization expired. Connect again." }, 401, {
+      ...headers,
+      "Set-Cookie": clearCookie(SESSION_COOKIE),
+    });
+  }
+  if (error.status >= 500) {
+    return json({ error: "Reddit is temporarily unavailable. Try again shortly." }, 503, headers);
+  }
+  return null;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -108,7 +133,7 @@ async function handleCallback(request: Request, env: Env): Promise<Response> {
   );
   const expiresAt = Date.now() + token.expiresIn * 1_000;
   const sessionCookie = await sealJson({ accessToken: token.accessToken, expiresAt }, env.COOKIE_KEY);
-  return redirect("/dashboard?connected=1", [
+  return redirect("/?connected=1", [
     clearCookie(STATE_COOKIE),
     secureCookie(SESSION_COOKIE, sessionCookie, token.expiresIn),
   ]);
@@ -123,11 +148,17 @@ async function handleSession(request: Request, env: Env): Promise<Response> {
     });
   }
 
-  const [username, communities] = await Promise.all([
-    getIdentity(session.accessToken, env.APP_USER_AGENT),
-    getModeratedCommunities(session.accessToken, env.APP_USER_AGENT),
-  ]);
-  return json({ authenticated: true, configured: true, username, communities });
+  try {
+    const [username, communities] = await Promise.all([
+      getIdentity(session.accessToken, env.APP_USER_AGENT),
+      getModeratedCommunities(session.accessToken, env.APP_USER_AGENT),
+    ]);
+    return json({ authenticated: true, configured: true, username, communities });
+  } catch (error) {
+    const response = redditErrorResponse(error, true);
+    if (response) return response;
+    throw error;
+  }
 }
 
 async function handleScan(request: Request, env: Env): Promise<Response> {
@@ -146,24 +177,45 @@ async function handleScan(request: Request, env: Env): Promise<Response> {
   }
   const session = await sessionFromRequest(request, env);
   if (!session) return json({ error: "Authorization required" }, 401);
+  const now = Date.now();
+  const elapsed = session.lastScanAt === undefined ? MIN_SCAN_INTERVAL_MS : now - session.lastScanAt;
+  if (elapsed < MIN_SCAN_INTERVAL_MS) {
+    return json(
+      { error: "Please wait before running another scan." },
+      429,
+      { "Retry-After": String(Math.ceil((MIN_SCAN_INTERVAL_MS - Math.max(0, elapsed)) / 1_000)) },
+    );
+  }
   if (!isRecord(payload) || typeof payload.subreddit !== "string" || !/^[A-Za-z0-9_]{2,21}$/.test(payload.subreddit)) {
     return json({ error: "Choose a valid community" }, 400);
   }
 
   const requestedSubreddit = payload.subreddit;
 
-  const communities = await getModeratedCommunities(session.accessToken, env.APP_USER_AGENT);
-  const subreddit = communities.find((name) => name.toLowerCase() === requestedSubreddit.toLowerCase());
-  if (!subreddit) return json({ error: "You must moderate the selected community" }, 403);
+  try {
+    const communities = await getModeratedCommunities(session.accessToken, env.APP_USER_AGENT);
+    const subreddit = communities.find((name) => name.toLowerCase() === requestedSubreddit.toLowerCase());
+    if (!subreddit) return json({ error: "You must moderate the selected community" }, 403);
 
-  const submissions = await getRecentSubmissions(subreddit, session.accessToken, env.APP_USER_AGENT);
-  const results = submissions.map(scoreSubmission);
-  return json({
-    subreddit,
-    scannedAt: new Date().toISOString(),
-    results,
-    retention: "response-only; no server persistence",
-  });
+    const submissions = await getRecentSubmissions(subreddit, session.accessToken, env.APP_USER_AGENT);
+    const results = submissions.map(scoreSubmission);
+    const nextSession = await sealJson({ ...session, lastScanAt: now }, env.COOKIE_KEY);
+    const remainingSeconds = Math.max(1, Math.ceil((session.expiresAt - Date.now()) / 1_000));
+    return json(
+      {
+        subreddit,
+        scannedAt: new Date().toISOString(),
+        results,
+        retention: "response-only; no server persistence",
+      },
+      200,
+      { "Set-Cookie": secureCookie(SESSION_COOKIE, nextSession, remainingSeconds) },
+    );
+  } catch (error) {
+    const response = redditErrorResponse(error);
+    if (response) return response;
+    throw error;
+  }
 }
 
 async function fetchAsset(request: Request, env: Env): Promise<Response> {

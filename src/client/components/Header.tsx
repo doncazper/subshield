@@ -1,15 +1,15 @@
-import { Clock3, Code2, LogOut, ShieldCheck, UserRound } from "lucide-react";
+import { Clock3, Code2, LogOut, ShieldCheck, TriangleAlert, UserRound } from "lucide-react";
 import type { SessionState } from "../types";
 import { logout } from "../lib/api";
 import { Brand } from "./Brand";
 
 interface HeaderProps {
   session: SessionState;
-  oauthConfigured?: boolean;
+  accessState: "checking" | "pending" | "configured" | "unavailable";
   onLoggedOut: () => void;
 }
 
-export function Header({ session, oauthConfigured, onLoggedOut }: HeaderProps) {
+export function Header({ session, accessState, onLoggedOut }: HeaderProps) {
   const handleLogout = async () => {
     await logout();
     onLoggedOut();
@@ -32,23 +32,33 @@ export function Header({ session, oauthConfigured, onLoggedOut }: HeaderProps) {
           <LogOut size={18} strokeWidth={1.8} aria-hidden="true" />
           Log out
         </button>
-      ) : oauthConfigured === true ? (
+      ) : accessState === "configured" ? (
         <a className="button button--outline header-action" href="/api/auth/reddit">
           <UserRound size={18} strokeWidth={1.8} aria-hidden="true" />
           Connect Reddit account
         </a>
       ) : (
         <div
-          className={`header-status ${oauthConfigured === false ? "is-pending" : "is-checking"}`}
+          className={`header-status ${accessState === "pending" ? "is-pending" : accessState === "unavailable" ? "is-unavailable" : "is-checking"}`}
           role="status"
-          aria-label={oauthConfigured === false ? "Reddit account connection unavailable" : "Checking Reddit account connection"}
+          aria-label={
+            accessState === "pending"
+              ? "Preview mode"
+              : accessState === "unavailable"
+                ? "Live connection status unavailable"
+                : "Checking Reddit account connection"
+          }
         >
-          {oauthConfigured === false ? (
+          {accessState === "pending" ? (
             <Clock3 size={18} strokeWidth={1.8} aria-hidden="true" />
+          ) : accessState === "unavailable" ? (
+            <TriangleAlert size={18} strokeWidth={1.8} aria-hidden="true" />
           ) : (
             <ShieldCheck size={18} strokeWidth={1.8} aria-hidden="true" />
           )}
-          <span>{oauthConfigured === false ? "Account connection unavailable" : "Checking access"}</span>
+          <span>
+            {accessState === "pending" ? "Preview mode" : accessState === "unavailable" ? "Live status unavailable" : "Checking access"}
+          </span>
         </div>
       )}
     </header>

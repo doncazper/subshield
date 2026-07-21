@@ -25,6 +25,12 @@ describe("OAuth session protection", () => {
   it("rejects malformed session and OAuth state payloads", () => {
     expect(parseSession({ accessToken: "token" })).toBeNull();
     expect(parseSession({ accessToken: 42, expiresAt: 10 })).toBeNull();
+    expect(parseSession({ accessToken: "token", expiresAt: 10, lastScanAt: "later" })).toBeNull();
+    expect(parseSession({ accessToken: "token", expiresAt: 10, lastScanAt: 9 })).toEqual({
+      accessToken: "token",
+      expiresAt: 10,
+      lastScanAt: 9,
+    });
     expect(parseState({ nonce: "nonce" })).toBeNull();
     expect(parseState({ nonce: "nonce", expiresAt: 10 })).toEqual({ nonce: "nonce", expiresAt: 10 });
   });

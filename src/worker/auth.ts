@@ -7,6 +7,7 @@ export const STATE_COOKIE = "subshield_oauth_state";
 export interface SessionPayload {
   accessToken: string;
   expiresAt: number;
+  lastScanAt?: number;
 }
 
 export interface StatePayload {
@@ -97,7 +98,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export function parseSession(value: unknown): SessionPayload | null {
   if (!isRecord(value)) return null;
   if (typeof value.accessToken !== "string" || typeof value.expiresAt !== "number") return null;
-  return { accessToken: value.accessToken, expiresAt: value.expiresAt };
+  if (value.lastScanAt !== undefined && typeof value.lastScanAt !== "number") return null;
+  return {
+    accessToken: value.accessToken,
+    expiresAt: value.expiresAt,
+    ...(value.lastScanAt === undefined ? {} : { lastScanAt: value.lastScanAt }),
+  };
 }
 
 export function parseState(value: unknown): StatePayload | null {

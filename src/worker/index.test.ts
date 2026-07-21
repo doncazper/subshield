@@ -28,6 +28,10 @@ function jsonResponse(value: unknown): Response {
   });
 }
 
+function errorResponse(status: number, headers: HeadersInit = {}): Response {
+  return new Response("", { status, headers });
+}
+
 async function sessionCookie(expiresAt = Date.now() + 60_000): Promise<string> {
   const sealed = await sealJson({ accessToken: "temporary-token", expiresAt }, cookieKey);
   return `${SESSION_COOKIE}=${sealed}`;
@@ -218,5 +222,94 @@ describe("Worker policy boundaries", () => {
     expect(response.headers.get("Location")).toBe("/?oauth=invalid-state");
     expect(response.headers.get("Set-Cookie")).toContain("Max-Age=0");
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("completes OAuth and redirects back to the real application route", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse({ access_token: "temporary-token", expires_in: 3_600 }));
+    globalThis.fetch = fetchMock;
+    const sealedState = await sealJson({ nonce: "expected-state", expiresAt: Date.now() + 60_000 }, cookieKey);
+    const response = await worker.fetch(
+      new Request(`${origin}/oauth/callback?code=authorization-code&state=expected-state`, {
+        headers: { Cookie: `${STATE_COOKIE}=${sealedState}` },
+      }),
+      env(),
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get("Location")).toBe("/?connected=1");
+    expect(response.headers.get("Set-Cookie")).toContain(`${SESSION_COOKIE}=`);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("clears a session when Reddit reports that authorization expired", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValueOnce(errorResponse(401));
+    const response = await worker.fetch(
+      new Request(`${origin}/api/session`, { headers: { Cookie: await sessionCookie() } }),
+      env(),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ authenticated: false, configured: true });
+    expect(response.headers.get("Set-Cookie")).toContain("Max-Age=0");
+  });
+
+  it("maps Reddit rate limits without retrying or leaking upstream content", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValueOnce(errorResponse(429, { "Retry-After": "5" }));
+    const response = await worker.fetch(
+      new Request(`${origin}/api/scan`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Cookie: await sessionCookie(),
+          Origin: origin,
+        },
+        body: JSON.stringify({ subreddit: "ExampleMod" }),
+      }),
+      env(),
+    );
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get("Retry-After")).toBe("5");
+    expect(await response.json()).toEqual({ error: "Reddit is rate-limiting requests. Try again shortly." });
+  });
+
+  it("enforces a short per-session scan cooldown without persistent storage", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(listing([{ display_name: "ExampleMod" }])))
+      .mockResolvedValueOnce(jsonResponse(listing([])));
+    globalThis.fetch = fetchMock;
+    const response = await worker.fetch(
+      new Request(`${origin}/api/scan`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Cookie: await sessionCookie(),
+          Origin: origin,
+        },
+        body: JSON.stringify({ subreddit: "ExampleMod" }),
+      }),
+      env(),
+    );
+    const refreshedCookie = response.headers.get("Set-Cookie")?.split(";", 1)[0];
+    expect(response.status).toBe(200);
+    expect(refreshedCookie).toBeTruthy();
+
+    const throttled = await worker.fetch(
+      new Request(`${origin}/api/scan`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Cookie: refreshedCookie ?? "",
+          Origin: origin,
+        },
+        body: JSON.stringify({ subreddit: "ExampleMod" }),
+      }),
+      env(),
+    );
+
+    expect(throttled.status).toBe(429);
+    expect(throttled.headers.get("Retry-After")).toBe("10");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

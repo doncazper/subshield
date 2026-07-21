@@ -5,6 +5,7 @@ SubShield is one stateless Cloudflare Worker deployment containing a React stati
 ```text
 ┌──────────────────────────── Browser ────────────────────────────┐
 │ React UI                                                       │
+│ - manual entry/JSON queue (browser memory only)               │
 │ - explicit OAuth action                                       │
 │ - one moderated-community selector                            │
 │ - one user-triggered scan                                     │
@@ -16,11 +17,12 @@ SubShield is one stateless Cloudflare Worker deployment containing a React stati
 │ OAuth state + temporary session encrypted into HttpOnly cookie │
 │ moderator membership revalidation                              │
 │ 2 KB scan-body limit                                           │
-│ deterministic in-memory scoring                                │
+│ short per-session scan cooldown                               │
+│ deterministic in-memory scoring (OAuth branch)                │
 │ no-store JSON responses                                        │
 │ no persistent Reddit-content bindings                          │
 └───────────────────────────┬────────────────────────────────────┘
-                            │ temporary Bearer token
+                            │ temporary Bearer token (OAuth branch only)
                             ▼
 ┌──────────────────────────── Reddit ────────────────────────────┐
 │ /api/v1/me                                                     │
@@ -49,7 +51,8 @@ SubShield is one stateless Cloudflare Worker deployment containing a React stati
 1. OAuth state exists only in a sealed browser cookie for at most ten minutes.
 2. The temporary access token exists only in a sealed browser cookie for at most one hour and in Worker request memory during API calls.
 3. Reddit identity and moderated-community names exist only in Worker request memory and the current browser state.
-4. Submission self-text is used during scoring and deliberately omitted from the response.
-5. Returned titles, domains, permalinks, timestamps, and rule matches remain only in the current browser state until cleared, navigation, or tab closure.
+4. Manual entries are supplied deliberately by the moderator, scored in the browser, and never sent to the Worker or Reddit.
+5. Submission self-text is used during scoring and deliberately omitted from the response.
+6. Returned titles, domains, permalinks, timestamps, and rule matches remain only in the current browser state until cleared, navigation, or tab closure.
 
 There are no KV, D1, R2, Durable Object, Queue, database, file, or content-analytics bindings.

@@ -1,84 +1,98 @@
 import { ArrowRight, Check, Clock3, Cpu, LockKeyhole, Play, ShieldCheck, Trash2, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import { loadHealth, loadSession } from "../lib/api";
-import type { AppHealth, SessionState } from "../types";
+import type { SessionState } from "../types";
 import { Header } from "./Header";
 import { ScanPanel } from "./ScanPanel";
 
+type HealthState = "loading" | "ready" | "unavailable";
+
 export function HomePage() {
-  const [health, setHealth] = useState<AppHealth | null>(null);
+  const [healthState, setHealthState] = useState<HealthState>("loading");
   const [session, setSession] = useState<SessionState>({ status: "loading" });
 
   const refreshSession = async () => {
     try {
       setSession(await loadSession());
     } catch {
-      setSession({ status: "anonymous", configured: health?.configured ?? false });
+      setSession({ status: "unavailable" });
     }
   };
 
   useEffect(() => {
     const controller = new AbortController();
-    const load = async () => {
-      try {
-        const [nextHealth, nextSession] = await Promise.all([
-          loadHealth(controller.signal),
-          loadSession(controller.signal),
-        ]);
-        setHealth(nextHealth);
-        setSession(nextSession);
-      } catch (error) {
+    void loadHealth(controller.signal)
+      .then(() => {
+        setHealthState("ready");
+      })
+      .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
-        setSession({ status: "anonymous", configured: false });
-      }
-    };
-    void load();
+        setHealthState("unavailable");
+      });
+    void loadSession(controller.signal)
+      .then(setSession)
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setSession({ status: "unavailable" });
+      });
     return () => controller.abort();
   }, []);
 
   const oauthConfigured = session.status === "authenticated"
-    ? true
-    : session.status === "anonymous"
-      ? session.configured
-      : health?.configured;
-  const approvalPending = oauthConfigured === false;
+    || (session.status === "anonymous" && session.configured);
+  const localOnlyPreview = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+  const accessState: "checking" | "pending" | "configured" | "unavailable" = oauthConfigured
+    ? "configured"
+    : (healthState === "unavailable" || session.status === "unavailable") && !localOnlyPreview
+      ? "unavailable"
+      : healthState === "loading" || session.status === "loading"
+        ? "checking"
+        : "pending";
 
   return (
     <div className="app-shell">
-      <Header session={session} oauthConfigured={oauthConfigured} onLoggedOut={() => void refreshSession()} />
+      <Header session={session} accessState={accessState} onLoggedOut={() => void refreshSession()} />
       <main>
         <section className="hero">
           <div className="hero-copy">
             <h1>Review one community’s queue with clarity.</h1>
             <p>
-              SubShield helps moderators review configured spam and safety-rule matches in one community at a time. Every decision stays with the moderator.
+              SubShield helps moderators review published spam and safety-rule matches in one community at a time. Every decision stays with the moderator.
             </p>
             {session.status === "authenticated" ? (
               <a className="button button--primary hero-cta" href="#scan">
                 Open your community scan
                 <ArrowRight size={19} strokeWidth={1.9} aria-hidden="true" />
               </a>
-            ) : approvalPending ? (
-              <a className="button button--primary hero-cta" href="#scan">
-                <Play size={20} strokeWidth={1.8} aria-hidden="true" />
-                Explore the moderator workflow
-              </a>
-            ) : (
+            ) : accessState === "configured" ? (
               <a className="button button--primary hero-cta" href="/api/auth/reddit">
                 <UserRound size={20} strokeWidth={1.8} aria-hidden="true" />
                 Connect Reddit account
+              </a>
+            ) : (
+              <a className="button button--primary hero-cta" href="#scan">
+                <Play size={20} strokeWidth={1.8} aria-hidden="true" />
+                Explore the moderator workflow
               </a>
             )}
             <a className="access-link" href="/privacy#data-access">
               See exactly what we access
               <ArrowRight size={19} strokeWidth={1.8} aria-hidden="true" />
             </a>
-            {approvalPending ? (
+            {accessState === "pending" ? (
               <div className="approval-state" role="status">
                 <Clock3 size={18} strokeWidth={1.8} aria-hidden="true" />
                 <span>
-                  <strong>Reddit account connection unavailable</strong>
-                  Explore the moderator workflow with synthetic examples. No Reddit account or content is used in this preview.
+                  <strong>Preview mode</strong>
+                  OAuth is not configured yet. Explore the local workflow with synthetic examples.
+                </span>
+              </div>
+            ) : accessState === "unavailable" ? (
+              <div className="approval-state approval-state--unavailable" role="status">
+                <Clock3 size={18} strokeWidth={1.8} aria-hidden="true" />
+                <span>
+                  <strong>Live connection status unavailable</strong>
+                  The local workflow preview remains available while the live status endpoint is unavailable.
                 </span>
               </div>
             ) : null}
@@ -107,12 +121,12 @@ export function HomePage() {
         <section className="data-band" aria-labelledby="data-band-title">
           <span className="data-band__icon"><ShieldCheck size={36} strokeWidth={1.7} /></span>
           <div>
-            <h2 id="data-band-title">No Reddit content stored. No background monitoring. No model training.</h2>
-            <p>SubShield runs only when you ask, keeps Reddit content in request memory, and evaluates only published deterministic rules.</p>
+            <h2 id="data-band-title">Review prompts, not automated actions.</h2>
+            <p>Published rules surface likely spam and safety-language signals; the moderator makes the final call.</p>
             <ul className="data-band__list">
-              <li><Check size={15} /> Temporary OAuth only</li>
-              <li><Check size={15} /> Read-only scopes</li>
-              <li><Check size={15} /> Human review required</li>
+              <li><Check size={15} /> One community at a time</li>
+              <li><Check size={15} /> Up to 25 recent submissions</li>
+              <li><Check size={15} /> No actions on Reddit</li>
             </ul>
           </div>
           <a href="/privacy">Read data practices <ArrowRight size={18} /></a>

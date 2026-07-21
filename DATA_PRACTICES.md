@@ -13,6 +13,7 @@ This document is the engineering counterpart to SubShield’s public privacy pag
 | Reddit username | `/api/v1/me` | Show connected account | None | Current page state | No |
 | Moderated-community names | `/subreddits/mine/moderator` | Populate selector and validate authorization | None | Current page state | No |
 | Up to 25 public submission titles, self-texts, domains, IDs, timestamps, permalinks | `/r/{subreddit}/new` | On-demand deterministic scan | None | Current scan state | No |
+| Moderator-supplied titles, self-texts, domains, and optional Reddit reference paths | Manual review form or JSON paste | Review content the moderator deliberately provides | None | Current manual queue and scan state | No; reference paths are never fetched |
 | Risk scores and reasons | Derived in request memory | Prioritize human review | None | Current scan state | No |
 | Standard request/security metadata | Browser and Cloudflare | Deliver and protect the service | Controlled by Cloudflare’s hosting and security systems | Not applicable | Cloudflare as infrastructure provider |
 
@@ -32,8 +33,11 @@ SubShield does not collect or retain:
 
 - A scan starts only after an authenticated moderator chooses a community and clicks the scan button.
 - The approval-pending public demo uses only committed synthetic examples and makes no Reddit request.
+- Manual review accepts one entry or a JSON queue of at most 25 deliberately supplied submissions; it performs scoring in the browser and makes zero Reddit requests.
+- Manual Reddit reference paths are display links only. The client rejects external URLs and never fetches a URL supplied in a manual entry.
 - The Worker re-checks that the connected user moderates the requested community.
 - Each scan is capped at 25 recent public submissions.
+- A short cooldown is carried in the encrypted session cookie to prevent accidental repeated scans; no server-side rate-limit store is used.
 - Scan request bodies are measured in UTF-8 bytes and rejected above 2 KB; malformed JSON returns a bounded client error.
 - Self-text is used only during scoring and is intentionally omitted from the response.
 - Worker error logs contain only the request path and error class, never OAuth codes, tokens, usernames, community names, submissions, or scores.
@@ -42,6 +46,7 @@ SubShield does not collect or retain:
 ## Deletion and revocation
 
 - **Clear results** removes the current scan response from React state.
+- **Remove** deletes an individual manual entry from the current browser queue.
 - **Log out** expires the encrypted session cookie immediately.
 - The cookie expires automatically after the temporary Reddit token expires (at most one hour).
 - Users can revoke the app from Reddit’s connected-app settings.

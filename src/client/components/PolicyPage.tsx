@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, Clock3, Code2, Database, KeyRound, Server, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Check, Clock3, Code2, Database, FileText, KeyRound, Server, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { loadHealth } from "../lib/api";
 import { Brand } from "./Brand";
@@ -41,8 +41,8 @@ const accessStatusContent: Record<AccessStatus, { title: string; detail: string 
     detail: "Reading the deployment's no-store health endpoint.",
   },
   pending: {
-    title: "Reddit account connection unavailable",
-    detail: "OAuth credentials are not configured. The public workflow preview uses synthetic examples only.",
+    title: "Preview mode — OAuth not configured",
+    detail: "The local workflow preview is available; no Reddit content is accessed.",
   },
   configured: {
     title: "Reddit OAuth configured",
@@ -87,6 +87,7 @@ export function PrivacyPage() {
     >
       <section id="data-access">
         <h2>Data we access</h2>
+        <p>SubShield also has a no-OAuth manual review path. You may enter or paste content you already have permission to review; that content is scored in this browser, is not sent to SubShield or Reddit, and disappears with the page.</p>
         <p>After you explicitly authorize SubShield, it requests only three Reddit OAuth scopes:</p>
         <dl className="scope-list">
           <div><dt>identity</dt><dd>Read your Reddit username so the app can show which account is connected.</dd></div>
@@ -98,13 +99,14 @@ export function PrivacyPage() {
 
       <section>
         <h2>How the data is used</h2>
-        <p>SubShield applies a published, deterministic set of phrase, link, punctuation, and formatting rules to surface configured spam and safety-rule matches. It does not infer sensitive characteristics, build user profiles, calculate subreddit sentiment, train models, or make moderation decisions.</p>
+        <p>SubShield applies a published, deterministic set of phrase, link, punctuation, and formatting rules to surface spam and safety-rule matches. It does not infer sensitive characteristics, build user profiles, calculate subreddit sentiment, train models, or make moderation decisions.</p>
       </section>
 
       <section>
         <h2>Storage and retention</h2>
         <div className="policy-facts">
           <div><Database size={22} /><strong>Reddit content</strong><span>Never written to a database, object store, file, log, analytics product, or model.</span></div>
+          <div><FileText size={22} /><strong>Manual entries</strong><span>Kept only in browser memory. Optional Reddit paths are display references; SubShield never fetches them.</span></div>
           <div><Clock3 size={22} /><strong>Authorization</strong><span>A temporary Reddit access token is held in an encrypted, essential, HttpOnly cookie for at most one hour. No refresh token is requested.</span></div>
           <div><Server size={22} /><strong>Scan response</strong><span>Returned with <code>Cache-Control: no-store</code> and held only in the current browser view until you clear it, navigate away, or close the tab.</span></div>
         </div>
@@ -120,7 +122,9 @@ export function PrivacyPage() {
         <h2>Your controls and deletion</h2>
         <ul className="check-list">
           <li><Check size={16} /><span>Nothing runs until you click “Run ephemeral scan.”</span></li>
+          <li><Check size={16} /><span>A short session cooldown prevents accidental repeated scans.</span></li>
           <li><Check size={16} /><span>“Clear results” removes the current response from the interface.</span></li>
+          <li><Check size={16} /><span>Manual review entries can be removed individually and are never uploaded.</span></li>
           <li><Check size={16} /><span>Logging out immediately clears the encrypted authorization cookie.</span></li>
           <li><Check size={16} /><span>You can revoke SubShield from your Reddit account’s connected-app settings.</span></li>
         </ul>
@@ -143,7 +147,7 @@ export function TermsPage() {
     >
       <section>
         <h2>Purpose</h2>
-        <p>SubShield is an open-source, read-only review aid for authorized Reddit moderators. It highlights configured signals in recent public submissions from one selected community. It does not replace moderator judgment and does not take actions on Reddit.</p>
+        <p>SubShield is an open-source, read-only review aid for authorized Reddit moderators. It highlights published signals in deliberately supplied content or recent public submissions from one selected community. It does not replace moderator judgment and does not take actions on Reddit.</p>
       </section>
       <section>
         <h2>Acceptable use</h2>
@@ -198,7 +202,7 @@ export function SecurityPage() {
         <h2>Request and session boundaries</h2>
         <div className="policy-facts">
           <div><KeyRound size={22} /><strong>Short authorization</strong><span>The access token is encrypted into an essential cookie for at most one hour. OAuth state expires after ten minutes.</span></div>
-          <div><Server size={22} /><strong>Bounded requests</strong><span>One moderator-membership recheck and one recent-submission request per user-triggered scan, capped at 25 items.</span></div>
+          <div><Server size={22} /><strong>Bounded requests</strong><span>One moderator-membership recheck and one recent-submission request per user-triggered scan, capped at 25 items with a short session cooldown.</span></div>
           <div><Database size={22} /><strong>No content store</strong><span>No KV, D1, R2, database, queue, file, analytics event, webhook, or Reddit-content log.</span></div>
         </div>
       </section>
@@ -206,10 +210,10 @@ export function SecurityPage() {
       <section>
         <h2>Data flow</h2>
         <ol className="security-flow">
-          <li><strong>1. Authorize</strong><span>A moderator explicitly starts Reddit OAuth.</span></li>
-          <li><strong>2. Select</strong><span>The app shows only communities that account moderates.</span></li>
-          <li><strong>3. Review</strong><span>One click evaluates up to 25 recent submissions with published deterministic rules.</span></li>
-          <li><strong>4. Discard</strong><span>The no-store response remains only in the current browser view and request memory.</span></li>
+          <li><strong>1. Supply or authorize</strong><span>Review manually in browser memory, or explicitly start Reddit OAuth.</span></li>
+          <li><strong>2. Select</strong><span>For OAuth, the app shows only communities that account moderates.</span></li>
+          <li><strong>3. Review</strong><span>One click evaluates up to 25 entries with published deterministic rules.</span></li>
+          <li><strong>4. Discard</strong><span>Manual entries and no-store OAuth responses remain only in the current browser view.</span></li>
         </ol>
       </section>
 
@@ -218,6 +222,8 @@ export function SecurityPage() {
         <ul className="check-list">
           <li><Check size={16} /><span>Every scan re-checks that the connected account moderates the requested community.</span></li>
           <li><Check size={16} /><span>Scan requests require a same-origin browser request and reject bodies larger than 2 KB.</span></li>
+          <li><Check size={16} /><span>Reddit requests use a ten-second timeout and cap response bodies before JSON parsing.</span></li>
+          <li><Check size={16} /><span>Reddit rate-limit responses are passed through as bounded <code>429</code> errors with <code>Retry-After</code>.</span></li>
           <li><Check size={16} /><span>Session cookies use AES-GCM plus <code>Secure</code>, <code>HttpOnly</code>, and <code>SameSite=Lax</code>.</span></li>
           <li><Check size={16} /><span>API and session responses use <code>Cache-Control: no-store</code>.</span></li>
           <li><Check size={16} /><span>Error logs include only the request path and error class, never tokens, usernames, community names, content, or scores.</span></li>

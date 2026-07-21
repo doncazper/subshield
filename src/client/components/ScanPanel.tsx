@@ -1,8 +1,9 @@
-import { ChevronDown, Clock3, ExternalLink, FileText, Info, Play, ShieldCheck, X } from "lucide-react";
-import { Fragment, useState } from "react";
-import { scoreSubmission, type ScoredSubmission } from "../../shared/scoring";
+import { ChevronDown, Clock3, ExternalLink, FileText, Info, Play, ShieldCheck, Upload, X } from "lucide-react";
+import { Fragment, useEffect, useState } from "react";
+import { scoreSubmission, type ScoredSubmission, type SubmissionInput } from "../../shared/scoring";
 import { runScan } from "../lib/api";
 import { demoScenarios } from "../lib/demoScenarios";
+import { MAX_MANUAL_SUBMISSIONS, parseManualJson, type ManualSubmissionDraft, validateManualDraft } from "../lib/manualReview";
 import type { SessionState } from "../types";
 
 function SignalTag({ signal }: { signal: ScoredSubmission["spam"] }) {
@@ -11,7 +12,7 @@ function SignalTag({ signal }: { signal: ScoredSubmission["spam"] }) {
   const level = matchCount === 0 ? "clear" : signal.level;
 
   return (
-    <span className={`risk risk--${level}`} aria-label={`${matchCount} configured rules matched`}>
+    <span className={`risk risk--${level}`} aria-label={`${matchCount} published rules matched`}>
       {label}
     </span>
   );
@@ -22,11 +23,11 @@ function SignalDetails({ result }: { result: ScoredSubmission }) {
     <div className="signal-detail">
       <div>
         <strong>Spam rule matches</strong>
-        <span>{result.spam.reasons.join(" · ") || "No configured rules matched"}</span>
+        <span>{result.spam.reasons.join(" · ") || "No published rules matched"}</span>
       </div>
       <div>
         <strong>Safety rule matches</strong>
-        <span>{result.language.reasons.join(" · ") || "No configured rules matched"}</span>
+        <span>{result.language.reasons.join(" · ") || "No published rules matched"}</span>
       </div>
       {result.permalink ? (
         <a href={`https://www.reddit.com${result.permalink}`} target="_blank" rel="noreferrer">
@@ -44,16 +45,27 @@ interface ScanPanelProps {
 export function ScanPanel({ session }: ScanPanelProps) {
   const communities = session.status === "authenticated" ? session.communities : [];
   const [community, setCommunity] = useState(communities[0] ?? "");
+  const [sourceMode, setSourceMode] = useState<"community" | "synthetic" | "manual">("synthetic");
   const [results, setResults] = useState<ScoredSubmission[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [status, setStatus] = useState("Ready — nothing has been processed");
   const [busy, setBusy] = useState(false);
   const [selectedScenarioId, setSelectedScenarioId] = useState(demoScenarios[0].id);
+  const [manualDraft, setManualDraft] = useState<ManualSubmissionDraft>({ title: "", selfText: "", domain: "self", permalink: "" });
+  const [manualEntries, setManualEntries] = useState<SubmissionInput[]>([]);
+  const [manualJson, setManualJson] = useState("");
+  const [manualError, setManualError] = useState<string | null>(null);
 
   const selectedCommunity = community && communities.includes(community)
     ? community
     : communities[0] ?? "";
-  const previewMode = session.status !== "authenticated";
+  useEffect(() => {
+    if (session.status === "authenticated" && sourceMode === "synthetic") setSourceMode("community");
+    if (session.status !== "authenticated" && sourceMode === "community") setSourceMode("synthetic");
+  }, [session.status, sourceMode]);
+
+  const manualMode = sourceMode === "manual";
+  const previewMode = sourceMode === "synthetic";
   const selectedScenario = demoScenarios.find((scenario) => scenario.id === selectedScenarioId) ?? demoScenarios[0];
 
   const selectDemoScenario = (scenarioId: string) => {
@@ -62,14 +74,65 @@ export function ScanPanel({ session }: ScanPanelProps) {
     setSelectedScenarioId(scenario.id);
     setResults([]);
     setExpandedId(null);
+    setManualError(null);
     setStatus(`Selected ${scenario.label} — local only, 0 Reddit requests`);
+  };
+
+  const addManualSubmission = () => {
+    if (manualEntries.length >= MAX_MANUAL_SUBMISSIONS) {
+      setManualError(`Keep the manual review queue to ${MAX_MANUAL_SUBMISSIONS} submissions.`);
+      return;
+    }
+    const result = validateManualDraft(manualDraft, manualEntries.length);
+    if (!result.submission) {
+      setManualError(result.error ?? "Review the manual submission fields.");
+      return;
+    }
+    setManualEntries((current) => [...current, result.submission!]);
+    setManualDraft({ title: "", selfText: "", domain: "self", permalink: "" });
+    setManualError(null);
+    setResults([]);
+    setExpandedId(null);
+    setStatus(`${manualEntries.length + 1} manual submission${manualEntries.length === 0 ? "" : "s"} ready — local only, 0 Reddit requests`);
+  };
+
+  const importManualJson = () => {
+    const result = parseManualJson(manualJson, manualEntries.length);
+    if (!result.submissions) {
+      setManualError(result.error ?? "Review the JSON input.");
+      return;
+    }
+    setManualEntries((current) => [...current, ...result.submissions!]);
+    setManualJson("");
+    setManualError(null);
+    setResults([]);
+    setExpandedId(null);
+    setStatus(`${manualEntries.length + result.submissions.length} manual submissions ready — local only, 0 Reddit requests`);
+  };
+
+  const removeManualSubmission = (id: string) => {
+    setManualEntries((current) => current.filter((entry) => entry.id !== id));
+    setResults([]);
+    setExpandedId(null);
+    setManualError(null);
+    setStatus("Manual queue updated — local only, 0 Reddit requests");
   };
 
   const handleScan = async () => {
     setBusy(true);
     setExpandedId(null);
     try {
-      if (session.status !== "authenticated") {
+      if (manualMode) {
+        if (manualEntries.length === 0) {
+          setManualError("Add at least one submission before reviewing the manual queue.");
+          setStatus("Add a manual submission to continue");
+          return;
+        }
+        setResults(manualEntries.map(scoreSubmission));
+        setStatus(`Manual review completed at ${new Date().toLocaleTimeString()} — ${manualEntries.length} submissions, 0 Reddit requests`);
+        return;
+      }
+      if (previewMode) {
         setResults(selectedScenario.inputs.map(scoreSubmission));
         setStatus(`Local demo completed at ${new Date().toLocaleTimeString()} — ${selectedScenario.inputs.length} synthetic submissions, 0 Reddit requests`);
         return;
@@ -90,7 +153,13 @@ export function ScanPanel({ session }: ScanPanelProps) {
       <div className="scan-panel__heading">
         <div>
           <h2 id="scan-title">On-demand community scan</h2>
-          <p className="eyeline">{session.status === "authenticated" ? `Connected as u/${session.username}` : "Moderator workflow preview · synthetic examples"}</p>
+          <p className="eyeline">
+            {sourceMode === "community" && session.status === "authenticated"
+              ? `Connected as u/${session.username}`
+              : manualMode
+                ? "Manual review · browser memory only"
+                : "Moderator workflow preview · synthetic examples"}
+          </p>
         </div>
         <div className="scan-panel__quiet">
           <Clock3 size={22} strokeWidth={1.7} aria-hidden="true" />
@@ -102,7 +171,61 @@ export function ScanPanel({ session }: ScanPanelProps) {
       </div>
 
       <div className="scan-controls">
-        {previewMode ? (
+        <div className="scan-source-switch" role="group" aria-label="Choose review source">
+          {session.status === "authenticated" ? (
+            <button className="scan-source-tab" type="button" aria-pressed={sourceMode === "community"} onClick={() => { setSourceMode("community"); setManualError(null); }}>
+              Connected community
+            </button>
+          ) : (
+            <button className="scan-source-tab" type="button" aria-pressed={sourceMode === "synthetic"} onClick={() => { setSourceMode("synthetic"); setManualError(null); }}>
+              Synthetic examples
+            </button>
+          )}
+          <button className="scan-source-tab" type="button" aria-pressed={manualMode} onClick={() => { setSourceMode("manual"); setManualError(null); }}>
+            Manual review
+          </button>
+        </div>
+        {manualMode ? (
+          <div className="manual-source" aria-label="Manual review source">
+            <div className="manual-source__heading">
+              <FileText size={18} strokeWidth={1.7} aria-hidden="true" />
+              <span><small>Manual source</small><strong>{manualEntries.length} of {MAX_MANUAL_SUBMISSIONS} submissions queued</strong></span>
+            </div>
+            <div className="manual-fields">
+              <label className="field-label" htmlFor="manual-title">
+                Title <span><input id="manual-title" value={manualDraft.title} maxLength={300} onChange={(event) => setManualDraft((current) => ({ ...current, title: event.target.value }))} placeholder="Submission title" autoComplete="off" /></span>
+              </label>
+              <label className="field-label" htmlFor="manual-domain">
+                Domain <span><input id="manual-domain" value={manualDraft.domain} maxLength={253} onChange={(event) => setManualDraft((current) => ({ ...current, domain: event.target.value }))} placeholder="self" autoComplete="off" /></span>
+              </label>
+              <label className="field-label manual-fields__wide" htmlFor="manual-body">
+                Body / self-text <span><textarea id="manual-body" value={manualDraft.selfText} maxLength={8_000} onChange={(event) => setManualDraft((current) => ({ ...current, selfText: event.target.value }))} placeholder="Optional text to review" rows={3} /></span>
+              </label>
+              <label className="field-label manual-fields__wide" htmlFor="manual-permalink">
+                Reddit reference path <span><input id="manual-permalink" value={manualDraft.permalink} maxLength={300} onChange={(event) => setManualDraft((current) => ({ ...current, permalink: event.target.value }))} placeholder="Optional; never fetched" autoComplete="off" /></span>
+              </label>
+            </div>
+            <div className="manual-source__actions">
+              <button className="button button--outline manual-add-button" type="button" onClick={addManualSubmission}>Add to review queue</button>
+              <span>Nothing is sent anywhere until you choose to leave this page.</span>
+            </div>
+            {manualError ? <p className="manual-error" role="alert">{manualError}</p> : null}
+            <details className="manual-json">
+              <summary><Upload size={15} aria-hidden="true" /> Paste JSON queue</summary>
+              <p>Optional array format: <code>{'[{"title":"...","selfText":"...","domain":"self"}]'}</code>. Reddit URLs are reference-only and never fetched.</p>
+              <textarea value={manualJson} onChange={(event) => setManualJson(event.target.value)} placeholder='[{"title":"Example question","selfText":"Optional body","domain":"self"}]' rows={3} aria-label="Manual review JSON queue" />
+              <button className="button button--outline manual-add-button" type="button" onClick={importManualJson} disabled={!manualJson.trim()}>Add JSON queue</button>
+            </details>
+            {manualEntries.length > 0 ? (
+              <ol className="manual-queue" aria-label="Manual review queue">
+                {manualEntries.map((entry, index) => (
+                  <li key={entry.id}><span><strong>{index + 1}.</strong> {entry.title}</span><button className="text-button" type="button" onClick={() => removeManualSubmission(entry.id)}>Remove</button></li>
+                ))}
+              </ol>
+            ) : null}
+            <p className="demo-request-proof" role="status"><ShieldCheck size={15} strokeWidth={1.9} aria-hidden="true" /><span><strong>Manual input · 0 Reddit requests.</strong> Entries are evaluated in this browser.</span></p>
+          </div>
+        ) : previewMode ? (
           <div className="demo-source" aria-label="Workflow preview source">
             <div className="demo-source__summary">
               <FileText size={18} strokeWidth={1.7} aria-hidden="true" />
@@ -158,10 +281,10 @@ export function ScanPanel({ session }: ScanPanelProps) {
           className="button button--primary scan-button"
           type="button"
           onClick={() => void handleScan()}
-          disabled={busy || (session.status === "authenticated" && !selectedCommunity)}
+          disabled={busy || (sourceMode === "community" && (!selectedCommunity || session.status !== "authenticated"))}
         >
           <Play size={19} fill="none" strokeWidth={1.9} aria-hidden="true" />
-          {busy ? "Scanning in memory…" : previewMode ? "Run preview scan" : "Run ephemeral scan"}
+          {busy ? "Scanning in memory…" : manualMode ? "Review manual queue" : previewMode ? "Run preview scan" : "Run ephemeral scan"}
         </button>
       </div>
 
@@ -246,7 +369,11 @@ export function ScanPanel({ session }: ScanPanelProps) {
             <FileText size={28} strokeWidth={1.5} aria-hidden="true" />
             <strong>Nothing processed yet</strong>
             <span>
-              {previewMode
+              {manualMode
+                ? manualEntries.length > 0
+                  ? `Review ${manualEntries.length} manual submission${manualEntries.length === 1 ? "" : "s"} when you are ready.`
+                  : "Add a submission above to review it locally."
+                : previewMode
                 ? `Run the preview to evaluate ${selectedScenario.inputs.length} synthetic submissions in this browser.`
                 : "Choose one community and run a scan when you are ready."}
             </span>

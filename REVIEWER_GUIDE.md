@@ -14,16 +14,19 @@ The live `/api/health` endpoint reports only whether OAuth is configured plus th
 
 ## Product walkthrough
 
-1. Open the live application and confirm the header shows **Account connection unavailable**.
+1. Open the live application and confirm the header shows **Preview mode** while OAuth is not configured.
 2. Click **Explore the moderator workflow**.
 3. Confirm the scan panel starts empty and states that nothing has been processed.
 4. Choose a named synthetic scenario and confirm the panel states **Local-only: 0 Reddit requests**.
 5. Click **Run preview scan**.
 6. Confirm the selected explicitly synthetic submissions appear.
 7. Expand **View rules** to inspect the exact deterministic phrases, domain, link, punctuation, or formatting rules that matched.
-8. Clear the results and confirm the interface returns to an empty state.
+8. Select **Manual review**, enter a title and optional body/domain, and add it to the review queue.
+9. Confirm **Manual input · 0 Reddit requests**, run **Review manual queue**, and expand its rules.
+10. Open **Paste JSON queue** to add a small array of deliberately supplied items. External URLs are rejected; Reddit permalinks are display references only and are never fetched.
+11. Clear the results and confirm the interface returns to an empty state.
 
-Once Reddit credentials are configured, anonymous users receive a standard **Connect Reddit account** action instead. Authenticated users can select only communities returned by Reddit's moderated-community endpoint.
+Manual review remains available for moderators who do not need live Reddit context. Once Reddit credentials are configured, anonymous users receive a standard **Connect Reddit account** action instead, while authenticated users can select only communities returned by Reddit's moderated-community endpoint.
 
 ## Claim-to-evidence map
 
@@ -35,6 +38,7 @@ Once Reddit credentials are configured, anonymous users receive a standard **Con
 | At most 25 submissions | Reddit endpoint includes `limit=25`; response mapping defensively slices to 25 | 30-item upstream fixture returns exactly 25 results |
 | No background access | No scheduled, queue, alarm, stream, polling, or webhook handlers exist | Source review and Wrangler configuration |
 | No Reddit-content persistence | No storage bindings; responses use no-store headers; browser uses React state | Health contract, scan response, and response-minimization tests |
+| Useful without OAuth | Manual entry and JSON queue call the shared scorer locally and make zero Reddit requests | Manual review validation and queue tests |
 | No AI or sensitive inference | `src/shared/scoring.ts` contains the complete deterministic rules | Scoring tests and public rule explanations |
 | Human moderation only | No Reddit write endpoints or scopes; production permalinks open on Reddit | Scope and API-surface review |
 | Encrypted short session | AES-GCM cookie, maximum one-hour token lifetime, secure cookie attributes | Encryption, wrong-key, cookie, and expired-session tests |
@@ -44,6 +48,7 @@ Once Reddit credentials are configured, anonymous users receive a standard **Con
 
 - Session load: `GET /api/v1/me` and `GET /subreddits/mine/moderator`, in parallel, only for an authorized session.
 - User-triggered scan: one moderated-community recheck and one `GET /r/{subreddit}/new?limit=25` request.
+- A ten-second per-session cooldown prevents accidental repeated scans before another Reddit request is made.
 - No pagination, retries that multiply requests, background jobs, schedules, streams, or bulk exports.
 
 ## Public policies and support

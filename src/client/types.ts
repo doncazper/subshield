@@ -10,6 +10,7 @@ export interface AppHealth {
 
 export type SessionState =
   | { status: "loading" }
+  | { status: "unavailable" }
   | { status: "anonymous"; configured: boolean }
   | { status: "authenticated"; username: string; communities: string[] };
 
