@@ -15,9 +15,9 @@
     "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
-    "lucide-react": "^1.25.0",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "lucide-react": "^1.27.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260719.1",
